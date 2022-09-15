@@ -2,6 +2,10 @@ import { Hono } from 'hono'
 
 const app = new Hono<Bindings>()
 
+app.get('/', async c => {
+	return c.text('Hello :) this is just a test')
+})
+
 app.get('/do/list', async c => {
 	try {
 		return c.env.TestDO.get(
