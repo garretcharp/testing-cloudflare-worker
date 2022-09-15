@@ -64,6 +64,15 @@ export class TestDO implements DurableObject {
 				reverse: true
 			})
 
+			const listEndE = await this.state.storage.list({
+				end: 'E'
+			})
+
+			const listEndEReverse = await this.state.storage.list({
+				end: 'E',
+				reverse: true
+			})
+
 			const listLimit3 = await this.state.storage.list({
 				limit: 3
 			})
@@ -80,6 +89,8 @@ export class TestDO implements DurableObject {
 				listStartAfterEReverse: Array.from(listStartAfterEReverse.keys()),
 				listStartAfterEEndM: Array.from(listStartAfterEEndM.keys()),
 				listStartAfterMEndEReverse: Array.from(listStartAfterMEndEReverse.keys()),
+				listEndE: Array.from(listEndE.keys()),
+				listEndEReverse: Array.from(listEndEReverse.keys()),
 				listLimit3: Array.from(listLimit3.keys()),
 				listLimit3Reverse: Array.from(listLimit3Reverse.keys())
 			})
