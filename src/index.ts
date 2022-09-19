@@ -52,8 +52,9 @@ export class TestDO implements DurableObject {
 				startAfter: 'E'
 			})
 
+			// startAfter becomes "end" when reverse is true
 			const listStartAfterEReverse = await this.state.storage.list({
-				startAfter: 'E',
+				end: 'E',
 				reverse: true
 			})
 
@@ -62,9 +63,9 @@ export class TestDO implements DurableObject {
 				end: 'M'
 			})
 
-			const listStartAfterMEndEReverse = await this.state.storage.list({
-				startAfter: 'M',
-				end: 'E',
+			const listStartAfterEEndMReverse = await this.state.storage.list({
+				startAfter: 'E',
+				end: 'M',
 				reverse: true
 			})
 
@@ -72,8 +73,9 @@ export class TestDO implements DurableObject {
 				end: 'E'
 			})
 
+			// end becomes "startAfter" when reverse is true
 			const listEndEReverse = await this.state.storage.list({
-				end: 'E',
+				startAfter: 'E',
 				reverse: true
 			})
 
@@ -92,7 +94,7 @@ export class TestDO implements DurableObject {
 				listStartAfterE: Array.from(listStartAfterE.keys()),
 				listStartAfterEReverse: Array.from(listStartAfterEReverse.keys()),
 				listStartAfterEEndM: Array.from(listStartAfterEEndM.keys()),
-				listStartAfterMEndEReverse: Array.from(listStartAfterMEndEReverse.keys()),
+				listStartAfterMEndEReverse: Array.from(listStartAfterEEndMReverse.keys()),
 				listEndE: Array.from(listEndE.keys()),
 				listEndEReverse: Array.from(listEndEReverse.keys()),
 				listLimit3: Array.from(listLimit3.keys()),
