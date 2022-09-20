@@ -18,6 +18,11 @@ bindings = [
 	{ name = "TestDO", class_name = "TestDO" }
 ]
 
+[[ d1_databases ]]
+binding = "TestD1"
+database_name = "test-d1"
+database_id = "aa6f2f3f-b483-437f-94b9-a9b932b83e65"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["TestDO"]

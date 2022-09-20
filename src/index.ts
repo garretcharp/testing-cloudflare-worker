@@ -6,6 +6,33 @@ app.get('/', async c => {
 	return c.text('Hello :) this is just a test')
 })
 
+app.get('/d1/insert', async c => {
+	const statement = c.env.TestD1.prepare('INSERT INTO Test (id, name) VALUES (?, ?)')
+
+	const id = Math.floor(Math.random() * 1000000) + 1
+	const result = await statement.bind(id, 'My cool test item').run()
+
+	return c.json(result)
+})
+
+app.get('/d1/select', async c => {
+	const statement = c.env.TestD1.prepare('SELECT * FROM Test')
+
+	const result = await statement.all()
+
+	return c.json(result)
+})
+
+app.get('/do/d1', async c => {
+	try {
+		return c.env.TestDO.get(
+			c.env.TestDO.idFromName('1')
+		).fetch('https://fake-host/d1-in-do')
+	} catch (error: any) {
+		return c.json({ error: error.message }, 500)
+	}
+})
+
 app.get('/do/list', async c => {
 	try {
 		return c.env.TestDO.get(
@@ -113,6 +140,18 @@ export class TestDO implements DurableObject {
 				listLimit3: Array.from(listLimit3.keys()),
 				listLimit3Reverse: Array.from(listLimit3Reverse.keys())
 			})
+		})
+
+		this.app.get('/d1-in-do', async c => {
+			try {
+				const statement = c.env.TestD1.prepare('SELECT * FROM Test')
+
+				const result = await statement.all()
+
+				return c.json(result)
+			} catch (error: any) {
+				return c.json({ error: error.message }, 500)
+			}
 		})
 	}
 
