@@ -7,10 +7,9 @@ app.get('/', async c => {
 })
 
 app.get('/d1/insert', async c => {
-	const statement = c.env.TestD1.prepare('INSERT INTO Test (id, name) VALUES (?, ?)')
+	const statement = c.env.TestD1.prepare('INSERT INTO Test (name) VALUES (?) RETURNING *')
 
-	const id = Math.floor(Math.random() * 1000000) + 1
-	const result = await statement.bind(id, 'My cool test item').run()
+	const result = await statement.bind(c.req.query('name') ?? 'My cool test item').first()
 
 	return c.json(result)
 })
