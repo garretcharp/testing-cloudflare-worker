@@ -42,6 +42,20 @@ app.get('/do/list', async c => {
 	}
 })
 
+app.get('/r2/public/cors', async c => {
+	return c.html(`
+		<html>
+			<head>
+				<title>Test</title>
+			</head>
+			<body>
+				<h1>Test</h1>
+				<img src="https://cdn.garretcharp.com/p9PZMKacGOxcibD.png" />
+			</body>
+		</html>
+	`)
+})
+
 export default {
 	fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
 		return app.fetch(request, env, ctx)
