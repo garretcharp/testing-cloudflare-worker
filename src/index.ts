@@ -189,19 +189,24 @@ export class TestDO implements DurableObject {
 
 			const { 0: client, 1: connection } = new WebSocketPair()
 
-			const requestId = c.req.header('cf-ray')
-			connection.addEventListener('open', () => this.sockets.set(requestId, client))
-			connection.addEventListener('close', () => this.sockets.delete(requestId))
+			const requestId = c.req.header('cf-ray') ?? 'idk'
+
+			connection.accept()
+			this.sockets.set(requestId, connection)
 
 			connection.addEventListener('message', (message) => {
 				if (typeof message.data === 'string') {
 					for (const socket of this.sockets.values()) {
 						socket.send(`[${requestId}]: ${message.data}`)
 					}
+				} else {
+					for (const socket of this.sockets.values()) {
+						socket.send(`[${requestId}]: idk it sent something`)
+					}
 				}
 			})
 
-			connection.accept()
+			connection.addEventListener('close', () => this.sockets.delete(requestId))
 
 			return new Response(null, {
 				status: 101,
