@@ -42,6 +42,18 @@ app.get('/do/list', async c => {
 	}
 })
 
+app.get('/do/websocket', async c => {
+	try {
+		return c.env.TestDO.get(
+			c.env.TestDO.idFromName('1')
+		).fetch('https://fake-host/websocket', {
+			headers: c.req.headers
+		})
+	} catch (error: any) {
+		return c.json({ error: error.message }, 500)
+	}
+})
+
 app.get('/r2/public/cors', async c => {
 	return c.html(`
 		<html>
@@ -64,6 +76,8 @@ export default {
 
 export class TestDO implements DurableObject {
 	private app = new Hono<Bindings>()
+
+	private sockets = new Map<string, WebSocket>()
 
 	constructor(private state: DurableObjectState, private env: Bindings) {
 		this.state.blockConcurrencyWhile(async () => {
@@ -165,6 +179,34 @@ export class TestDO implements DurableObject {
 			} catch (error: any) {
 				return c.json({ error: error.message }, 500)
 			}
+		})
+
+		this.app.get('/websocket', async c => {
+			const upgrade = c.req.header('upgrade')
+
+			if (upgrade !== 'websocket')
+				return new Response('Expected Upgrade: websocket', { status: 426 })
+
+			const { 0: client, 1: connection } = new WebSocketPair()
+
+			const requestId = c.req.header('cf-ray')
+			connection.addEventListener('open', () => this.sockets.set(requestId, client))
+			connection.addEventListener('close', () => this.sockets.delete(requestId))
+
+			connection.addEventListener('message', (message) => {
+				if (typeof message.data === 'string') {
+					for (const socket of this.sockets.values()) {
+						socket.send(`[${requestId}]: ${message.data}`)
+					}
+				}
+			})
+
+			connection.accept()
+
+			return new Response(null, {
+				status: 101,
+				webSocket: client
+			})
 		})
 	}
 
