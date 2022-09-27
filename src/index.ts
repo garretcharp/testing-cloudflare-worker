@@ -128,6 +128,9 @@ export class TestDO implements DurableObject {
 							}
 
 							break
+						case '/connections':
+							connection.send('Connections: ' + this.sockets.size)
+							break
 						default:
 							connection.send('Invalid command. Must be one of [/list, /send]')
 							break
