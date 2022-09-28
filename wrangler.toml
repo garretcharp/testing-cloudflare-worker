@@ -15,7 +15,9 @@ routes = [
 
 [durable_objects]
 bindings = [
-	{ name = "TestDO", class_name = "TestDO" }
+	{ name = "TestDO", class_name = "TestDO" },
+	{ name = "ChatManager", class_name = "ChatManager" },
+	{ name = "ChatNode", class_name = "ChatNode" }
 ]
 
 [[ d1_databases ]]
@@ -26,6 +28,10 @@ database_id = "aa6f2f3f-b483-437f-94b9-a9b932b83e65"
 [[migrations]]
 tag = "v1"
 new_classes = ["TestDO"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["ChatManager", "ChatNode"]
 
 [build]
 command = "npm run build"

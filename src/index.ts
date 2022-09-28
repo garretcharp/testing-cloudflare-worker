@@ -1,4 +1,6 @@
 import { Hono } from 'hono'
+import ChatManager from './chat/manager'
+import ChatNode from './chat/node'
 
 const app = new Hono<Bindings>()
 
@@ -34,11 +36,19 @@ app.get('/do/d1', async c => {
 
 app.get('/do/websocket', async c => {
 	try {
-		return c.env.TestDO.get(
-			c.env.TestDO.idFromName('1')
-		).fetch('https://fake-host/websocket', {
-			headers: c.req.headers
-		})
+		return c.env.ChatManager.get(
+			c.env.ChatManager.idFromName('my-chat-manager')
+		).fetch('https://my-chat-manager/websocket', c.req)
+	} catch (error: any) {
+		return c.json({ error: error.message }, 500)
+	}
+})
+
+app.get('/do/websocket/nodes', async c => {
+	try {
+		return c.env.ChatManager.get(
+			c.env.ChatManager.idFromName('my-chat-manager')
+		).fetch('https://my-chat-manager/nodes', c.req)
 	} catch (error: any) {
 		return c.json({ error: error.message }, 500)
 	}
@@ -67,8 +77,6 @@ export default {
 export class TestDO implements DurableObject {
 	private app = new Hono<Bindings>()
 
-	private sockets = new Map<string, WebSocket>()
-
 	constructor(private state: DurableObjectState, private env: Bindings) {
 		this.app.get('/d1-in-do', async c => {
 			try {
@@ -81,75 +89,11 @@ export class TestDO implements DurableObject {
 				return c.json({ error: error.message }, 500)
 			}
 		})
-
-		this.app.get('/websocket', async c => {
-			const upgrade = c.req.header('upgrade')
-
-			if (upgrade !== 'websocket')
-				return new Response('Expected Upgrade: websocket', { status: 426 })
-
-			const { 0: client, 1: connection } = new WebSocketPair()
-
-			const requestId = c.req.header('cf-ray') ?? 'idk'
-
-			connection.accept()
-			this.sockets.set(requestId, connection)
-
-			connection.addEventListener('message', async (message) => {
-				if (typeof message.data === 'string') {
-					const [cmd, ...data] = message.data.split(' ')
-
-					switch (cmd) {
-						case '/list':
-							const messages = await this.state.storage.list({
-								prefix: 'Message/',
-								reverse: true,
-								limit: 100,
-								allowConcurrency: true,
-								noCache: true
-							})
-							connection.send(JSON.stringify(Array.from(messages.values())))
-							break
-						case '/send':
-							const id = crypto.randomUUID(), createdAt = new Date().toISOString()
-
-							await this.state.storage.put(`Message/${createdAt}/${id}`, {
-								id,
-								createdAt,
-								message: data.join(' '),
-								sender: requestId
-							}, {
-								allowConcurrency: true,
-								noCache: true
-							})
-
-							for (const socket of this.sockets.values()) {
-								socket.send(`[${requestId}]: ${data.join(' ')}`)
-							}
-
-							break
-						case '/connections':
-							connection.send('Connections: ' + this.sockets.size)
-							break
-						default:
-							connection.send('Invalid command. Must be one of [/list, /send]')
-							break
-					}
-				} else {
-					connection.send('Error: send messages as strings')
-				}
-			})
-
-			connection.addEventListener('close', () => this.sockets.delete(requestId))
-
-			return new Response(null, {
-				status: 101,
-				webSocket: client
-			})
-		})
 	}
 
 	async fetch(request: Request) {
 		return this.app.fetch(request, this.env)
 	}
 }
+
+export { ChatManager, ChatNode }
