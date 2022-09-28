@@ -54,6 +54,16 @@ app.get('/do/websocket/nodes', async c => {
 	}
 })
 
+app.get('/do/websocket/chatters', async c => {
+	try {
+		return c.env.ChatManager.get(
+			c.env.ChatManager.idFromName('my-chat-manager')
+		).fetch('https://my-chat-manager/chatters', c.req)
+	} catch (error: any) {
+		return c.json({ error: error.message }, 500)
+	}
+})
+
 app.get('/r2/public/cors', async c => {
 	return c.html(`
 		<html>
