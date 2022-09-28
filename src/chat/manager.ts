@@ -16,24 +16,28 @@ export type NodeMessage = ReportChatters | SendMessage
 export default class ChatManager implements DurableObject {
 	private app = new Hono<Bindings>()
 
-	private chatters = new Map<string, string[]>()
-	private nodes = new Map<string, WebSocket>()
+	private nodes = new Map<string, { socket: WebSocket | undefined, chatters: string[] }>()
 
 	private async findChatNode() {
-		for (const [id, chatters] of this.chatters.entries()) {
+		for (const [id, { chatters }] of this.nodes.entries()) {
 			if (chatters.length < 500) return this.env.ChatNode.get(this.env.ChatNode.idFromString(id))
 		}
 
 		const id = this.env.ChatNode.newUniqueId()
 		this.state.storage.put(`ChatNodes/${id.toString()}`, '')
-
 		await this.connectWebsocket(id)
-		this.chatters.set(id.toString(), [])
 
 		return this.env.ChatNode.get(id)
 	}
 
 	private async connectWebsocket(id: DurableObjectId) {
+		if (!this.nodes.has(id.toString())) return
+
+		this.nodes.set(id.toString(), {
+			socket: undefined,
+			chatters: this.nodes.get(id.toString())?.chatters ?? []
+		})
+
 		try {
 			const node = this.env.ChatNode.get(id)
 
@@ -49,7 +53,10 @@ export default class ChatManager implements DurableObject {
 				return
 			}
 
-			this.nodes.set(id.toString(), webSocket)
+			this.nodes.set(id.toString(), {
+				socket: webSocket,
+				chatters: this.nodes.get(id.toString())?.chatters ?? []
+			})
 
 			webSocket.accept()
 
@@ -60,7 +67,11 @@ export default class ChatManager implements DurableObject {
 
 				const data = JSON.parse(message.data) as NodeMessage
 
-				if (data.type === 'ReportChatters') this.chatters.set(id.toString(), data.chatters)
+				if (data.type === 'ReportChatters')
+					this.nodes.set(id.toString(), {
+						socket: webSocket,
+						chatters: data.chatters
+					})
 			})
 
 			webSocket.addEventListener('error', () => {
@@ -80,34 +91,34 @@ export default class ChatManager implements DurableObject {
 			const nodes = await state.storage.list({ prefix: 'ChatNodes/' })
 
 			await Promise.all(
-				[...nodes.keys()].map(async key => {
+				[...nodes.keys()].map(key => {
 					const id = key.replace('ChatNodes/', '')
 
-					this.chatters.set(id, [])
-					await this.connectWebsocket(this.env.ChatNode.idFromString(id))
+					this.nodes.set(id, { socket: undefined, chatters: [] })
+					return this.connectWebsocket(this.env.ChatNode.idFromString(id))
 				})
 			)
+
+			await this.state.storage.setAlarm(Date.now() + 1000 * 10)
 		})
 
 		this.app.get('/websocket', async c => {
 			if (c.req.header('upgrade') !== 'websocket') return new Response('Expected Upgrade: websocket', { status: 426 })
 
-			return (await this.findChatNode()).fetch(`https://${this.state.id.toString()}/websocket`, c.req)
-		})
-
-		this.app.get('/chatters', async c => {
-			return c.json(Object.fromEntries(this.chatters.entries()))
+			return (await this.findChatNode()).fetch(`https://${this.state.id.toString()}/websocket`, {
+				headers: c.req.headers,
+				cf: {
+					// @ts-ignore
+					managerId: this.state.id.toString()
+				}
+			})
 		})
 
 		this.app.get('/nodes', async c => {
-			const data: any = {}
-
-			for (const [id, node] of this.nodes.entries()) {
-				data[id] = node.readyState
-			}
-
-			return c.json(data)
+			return c.json(Object.fromEntries(this.nodes.entries()))
 		})
+
+		this.app.get('/internal/keep-alive', async c => c.json({ ok: true }))
 
 		// this.app.post('/internal/node/data', async c => {
 		// 	const data = await c.req.json<NodeMessage>()
@@ -143,5 +154,9 @@ export default class ChatManager implements DurableObject {
 
 	async fetch(request: Request) {
 		return this.app.fetch(request, this.env)
+	}
+
+	async alarm(): Promise<void> {
+
 	}
 }
