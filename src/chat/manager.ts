@@ -20,18 +20,36 @@ export default class ChatManager implements DurableObject {
 
 	private async findChatNode() {
 		for (const [id, { chatters }] of this.nodes.entries()) {
-			if (chatters.length < 500) return this.env.ChatNode.get(this.env.ChatNode.idFromString(id))
+			if (chatters.length < 500) {
+				try {
+					return this.env.ChatNode.get(this.env.ChatNode.idFromString(id))
+				} catch (error) {
+					this.state.storage.delete(`ChatNodes/${id}`, { allowConcurrency: true })
+
+					try {
+						const { socket } = this.nodes.get(id) ?? {}
+						this.nodes.delete(id)
+						if (socket) socket.close()
+					} catch (error) {}
+				}
+			}
 		}
 
 		const id = this.env.ChatNode.newUniqueId()
-		this.state.storage.put(`ChatNodes/${id.toString()}`, '')
+		this.state.storage.put(`ChatNodes/${id.toString()}`, '', { allowConcurrency: true })
+		this.nodes.set(id.toString(), { socket: undefined, chatters: [] })
 		await this.connectWebsocket(id)
 
 		return this.env.ChatNode.get(id)
 	}
 
-	private async connectWebsocket(id: DurableObjectId) {
+	private async connectWebsocket(id: DurableObjectId, tries = 1) {
 		if (!this.nodes.has(id.toString())) return
+
+		if (tries > 15) {
+			this.state.storage.delete(`ChatNodes/${id}`, { allowConcurrency: true })
+			return this.nodes.delete(id.toString())
+		}
 
 		this.nodes.set(id.toString(), {
 			socket: undefined,
@@ -48,17 +66,18 @@ export default class ChatManager implements DurableObject {
 			})
 
 			if (!webSocket) {
-				setTimeout(() => this.connectWebsocket(id), 1000)
+				setTimeout(() => this.connectWebsocket(id, tries + 1), 1000)
 
 				return
 			}
 
+			webSocket.accept()
+
+			tries = 0
 			this.nodes.set(id.toString(), {
 				socket: webSocket,
 				chatters: this.nodes.get(id.toString())?.chatters ?? []
 			})
-
-			webSocket.accept()
 
 			webSocket.send(JSON.stringify({ type: 'GetChatters' }))
 
@@ -79,16 +98,16 @@ export default class ChatManager implements DurableObject {
 			})
 
 			webSocket.addEventListener('close', () => {
-				setTimeout(() => this.connectWebsocket(id), 1000)
+				setTimeout(() => this.connectWebsocket(id, tries + 1), 1000)
 			})
 		} catch (error) {
-			setTimeout(() => this.connectWebsocket(id), 1000)
+			setTimeout(() => this.connectWebsocket(id, tries + 1), 1000)
 		}
 	}
 
 	constructor(private state: DurableObjectState, private env: Bindings) {
 		this.state.blockConcurrencyWhile(async () => {
-			const nodes = await state.storage.list({ prefix: 'ChatNodes/' })
+			const nodes = await state.storage.list({ prefix: 'ChatNodes/', allowConcurrency: true })
 
 			await Promise.all(
 				[...nodes.keys()].map(key => {
@@ -118,7 +137,10 @@ export default class ChatManager implements DurableObject {
 			return c.json(Object.fromEntries(this.nodes.entries()))
 		})
 
-		this.app.get('/internal/keep-alive', async c => c.json({ ok: true }))
+		this.app.get('/internal/keep-alive', async c => {
+
+			return c.json({ valid: this.nodes.has(c.req.query('id')) })
+		})
 
 		// this.app.post('/internal/node/data', async c => {
 		// 	const data = await c.req.json<NodeMessage>()

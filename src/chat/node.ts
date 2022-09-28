@@ -7,10 +7,16 @@ export default class ChatNode implements DurableObject {
 
 	private manager: WebSocket | undefined
 
+	private deleted = false
 	constructor(private state: DurableObjectState, private env: Bindings) {
 		this.app.use('*', async (_, next) => {
-			const deleted = await this.state.storage.get('deleted')
-			if (deleted) return new Response('This node no longer exists', { status: 410 })
+			if (this.deleted) return new Response('This node no longer exists', { status: 410 })
+
+			const action = await this.state.storage.get<string>('action', { allowConcurrency: true })
+			if (action === 'delete') {
+				this.deleted = true
+				return new Response('This node no longer exists', { status: 410 })
+			}
 
 			await next()
 		})
@@ -98,22 +104,21 @@ export default class ChatNode implements DurableObject {
 					)
 
 				if (data.type === 'DeleteSocket') {
-					this.state.storage.put('deleted', true)
-					await this.state.storage.setAlarm(Date.now() + 5000)
+					this.deleted = true
+					this.state.storage.put('action', 'delete', { allowConcurrency: true })
+					await this.state.storage.setAlarm(Date.now() + 1000 * 60)
 
 					setTimeout(() => {
-						if (this.manager && this.manager.readyState === 1) {
+						if (this.manager) {
 							try {
 								this.manager.close()
 							} catch (error) {}
 						}
 
 						for (const socket of this.sockets.values()) {
-							if (socket.readyState === 1) {
-								try {
-									socket.close()
-								} catch (error) {}
-							}
+							try {
+								socket.close()
+							} catch (error) {}
 						}
 					}, 1000)
 
@@ -127,11 +132,29 @@ export default class ChatNode implements DurableObject {
 				try {
 					this.manager = undefined
 
-					await c.env.ChatManager.get(
+					const response = await c.env.ChatManager.get(
 						c.env.ChatManager.idFromString(managerId)
-					).fetch('https://fake-host/internal/keep-alive')
+					).fetch(`https://fake-host/internal/keep-alive?id=${this.state.id.toString()}`)
+
+					if (response.status !== 200) {
+						const action = await this.state.storage.get<string>('action', { allowConcurrency: true })
+						if (action) return
+						this.state.storage.put({
+							action: 'keep-alive',
+							managerId,
+							attempt: 1
+						}, { allowConcurrency: true })
+						await this.state.storage.setAlarm(Date.now() + 1000)
+					}
 				} catch (error) {
-					// ignore error for now
+					const action = await this.state.storage.get<string>('action', { allowConcurrency: true })
+					if (action) return
+					this.state.storage.put({
+						action: 'keep-alive',
+						managerId,
+						attempt: 1
+					}, { allowConcurrency: true })
+					await this.state.storage.setAlarm(Date.now() + 1000)
 				}
 			})
 
@@ -147,23 +170,69 @@ export default class ChatNode implements DurableObject {
 	}
 
 	async alarm() {
-		await this.state.storage.deleteAll()
+		const values = await this.state.storage.get<string | number>(['action', 'managerId', 'attempt'], { allowConcurrency: true })
 
-		if (this.manager && this.manager.readyState === 1) {
+		if (values.get('action') === 'keep-alive') {
+			if (this.manager) return
+
+			if (!values.has('managerId')) {
+				return this.state.storage.put('action', 'delete', { allowConcurrency: true })
+			}
+
+			const managerId = values.get('managerId') as string
+			const attempt = (values.get('attempt') as number) ?? 1
+
 			try {
-				this.manager.close()
-			} catch (error) {}
+				const response = await this.env.ChatManager.get(
+					this.env.ChatManager.idFromString(managerId)
+				).fetch(`https://fake-host/internal/keep-alive?id=${this.state.id.toString()}`)
+
+				if (response.status !== 200 && attempt < 10) {
+					this.state.storage.put({
+						action: 'keep-alive',
+						managerId,
+						attempt: attempt + 1
+					}, { allowConcurrency: true })
+
+					await this.state.storage.setAlarm(Date.now() + 1000)
+				}
+
+				const data = await response.json<{ valid: boolean }>()
+
+				if (!data.valid) await this.state.storage.put('action', 'delete', { allowConcurrency: true })
+			} catch (error) {
+				if (attempt < 10) {
+					this.state.storage.put({
+						action: 'keep-alive',
+						managerId,
+						attempt: attempt + 1
+					}, { allowConcurrency: true })
+
+					await this.state.storage.setAlarm(Date.now() + 1000)
+				} else {
+					await this.state.storage.put('action', 'delete', { allowConcurrency: true })
+				}
+			}
 		}
 
-		for (const socket of this.sockets.values()) {
-			if (socket.readyState === 1) {
+		if (values.get('action') === 'delete') {
+			this.deleted = true
+			await this.state.storage.deleteAll()
+
+			if (this.manager) {
+				try {
+					this.manager.close()
+				} catch (error) {}
+			}
+
+			for (const socket of this.sockets.values()) {
 				try {
 					socket.close()
 				} catch (error) {}
 			}
-		}
 
-		this.manager = undefined
-		this.sockets.clear()
+			this.manager = undefined
+			this.sockets.clear()
+		}
 	}
 }
