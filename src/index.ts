@@ -8,6 +8,25 @@ app.get('/', async c => {
 	return c.text('Hello :) this is just a test')
 })
 
+app.get('/cache/force-hit', async c => {
+	try {
+		await caches.default.put(c.req, c.json({ success: true, cached: true }))
+		const match = await caches.default.match(c.req)
+		return match ?? c.json({ success: true, cached: false })
+	} catch (error: any) {
+		return c.json({ success: false, error: error.message }, 500)
+	}
+})
+
+app.get('/cache/force-miss', async c => {
+	try {
+		const match = await caches.default.match(c.req)
+		return match ?? c.json({ success: true, cached: false })
+	} catch (error: any) {
+		return c.json({ success: false, error: error.message }, 500)
+	}
+})
+
 app.get('/d1/insert', async c => {
 	const statement = c.env.TestD1.prepare('INSERT INTO Test (name) VALUES (?) RETURNING *')
 
