@@ -43,6 +43,22 @@ app.get('/d1/select', async c => {
 	return c.json(result)
 })
 
+app.get('/old/d1/insert', async c => {
+	const statement = c.env.AnotherD1.prepare('INSERT INTO Test (name) VALUES (?) RETURNING *')
+
+	const result = await statement.bind(c.req.query('name') ?? 'My cool test item').first()
+
+	return c.json(result)
+})
+
+app.get('/old/d1/select', async c => {
+	const statement = c.env.AnotherD1.prepare('SELECT * FROM Test')
+
+	const result = await statement.all()
+
+	return c.json(result)
+})
+
 app.get('/do/d1', async c => {
 	try {
 		return c.env.TestDO.get(

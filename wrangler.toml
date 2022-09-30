@@ -25,6 +25,11 @@ binding = "TestD1"
 database_name = "test-d1"
 database_id = "aa6f2f3f-b483-437f-94b9-a9b932b83e65"
 
+[[ d1_databases ]]
+binding = "AnotherD1"
+database_name = "another-d1"
+database_id = "a42194f9-3137-41a1-8f64-df0cf045a6d6"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["TestDO"]
