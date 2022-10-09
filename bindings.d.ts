@@ -3,6 +3,4 @@ interface Bindings {
 	AnotherD1: D1Database
 
 	TestDO: DurableObjectNamespace
-	ChatManager: DurableObjectNamespace
-	ChatNode: DurableObjectNamespace
 }

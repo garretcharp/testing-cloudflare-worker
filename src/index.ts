@@ -1,6 +1,4 @@
 import { Hono } from 'hono'
-import ChatManager from './chat/manager'
-import ChatNode from './chat/node'
 
 const app = new Hono<Bindings>()
 
@@ -69,40 +67,6 @@ app.get('/do/d1', async c => {
 	}
 })
 
-app.get('/do/websocket', async c => {
-	try {
-		return c.env.ChatManager.get(
-			c.env.ChatManager.idFromName('my-chat-manager')
-		).fetch('https://my-chat-manager/websocket', c.req)
-	} catch (error: any) {
-		return c.json({ error: error.message }, 500)
-	}
-})
-
-app.get('/do/websocket/nodes', async c => {
-	try {
-		return c.env.ChatManager.get(
-			c.env.ChatManager.idFromName('my-chat-manager')
-		).fetch('https://my-chat-manager/nodes', c.req)
-	} catch (error: any) {
-		return c.json({ error: error.message }, 500)
-	}
-})
-
-app.get('/r2/public/cors', async c => {
-	return c.html(`
-		<html>
-			<head>
-				<title>Test</title>
-			</head>
-			<body>
-				<h1>Test</h1>
-				<img src="https://cdn.garretcharp.com/p9PZMKacGOxcibD.png" />
-			</body>
-		</html>
-	`)
-})
-
 export default {
 	fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
 		return app.fetch(request, env, ctx)
@@ -130,5 +94,3 @@ export class TestDO implements DurableObject {
 		return this.app.fetch(request, this.env)
 	}
 }
-
-export { ChatManager, ChatNode }
