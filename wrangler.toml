@@ -13,9 +13,9 @@ routes = [
 	{ pattern = "testing.garretcharp.com", custom_domain = true }
 ]
 
-r2_buckets = [
-	{ binding = "BUCKET", bucket_name = "a-test"}
-]
+# r2_buckets = [
+# 	{ binding = "BUCKET", bucket_name = "a-test"}
+# ]
 
 [durable_objects]
 bindings = [

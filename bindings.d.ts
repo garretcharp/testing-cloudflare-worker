@@ -22,5 +22,5 @@ interface Bindings {
 
 	TestQueue: Queue
 
-	BUCKET: R2Bucket
+	// BUCKET: R2Bucket
 }

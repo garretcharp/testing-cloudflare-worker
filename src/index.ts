@@ -88,15 +88,15 @@ app.get('/queue', async c => {
 
 app.get('/loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa.txt', c => c.text('loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa'))
 
-app.post('/bucket', async c => {
-	await c.env.BUCKET.put(`${c.req.header('cf-ray')}-${c.req.cf?.colo ?? 'UNKNOWN'}`, JSON.stringify({
-		headers: c.req.headers,
-		cf: c.req.cf,
-		time: new Date().toISOString(),
-	}))
+// app.post('/bucket', async c => {
+// 	await c.env.BUCKET.put(`${c.req.header('cf-ray')}-${c.req.cf?.colo ?? 'UNKNOWN'}`, JSON.stringify({
+// 		headers: c.req.headers,
+// 		cf: c.req.cf,
+// 		time: new Date().toISOString(),
+// 	}))
 
-	return c.json({ success: true })
-})
+// 	return c.json({ success: true })
+// })
 
 export default {
 	async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
