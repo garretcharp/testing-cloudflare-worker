@@ -13,20 +13,33 @@ routes = [
 	{ pattern = "testing.garretcharp.com", custom_domain = true }
 ]
 
+r2_buckets = [
+	{ binding = "BUCKET", bucket_name = "a-test"}
+]
+
 [durable_objects]
 bindings = [
 	{ name = "TestDO", class_name = "TestDO" }
 ]
 
-[[ d1_databases ]]
-binding = "TestD1"
-database_name = "test-d1"
-database_id = "aa6f2f3f-b483-437f-94b9-a9b932b83e65"
+[[queues.producers]]
+queue = "test-queue"
+binding = "TestQueue"
 
-[[ d1_databases ]]
-binding = "AnotherD1"
-database_name = "another-d1"
-database_id = "a42194f9-3137-41a1-8f64-df0cf045a6d6"
+[[queues.consumers]]
+queue = "test-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+
+# [[ d1_databases ]]
+# binding = "TestD1"
+# database_name = "test-d1"
+# database_id = "aa6f2f3f-b483-437f-94b9-a9b932b83e65"
+
+# [[ d1_databases ]]
+# binding = "AnotherD1"
+# database_name = "another-d1"
+# database_id = "a42194f9-3137-41a1-8f64-df0cf045a6d6"
 
 [[migrations]]
 tag = "v1"

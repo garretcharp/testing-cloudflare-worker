@@ -67,9 +67,46 @@ app.get('/do/d1', async c => {
 	}
 })
 
+app.get('/queue', async c => {
+	try {
+		await c.env.TestQueue.send({ testing: true })
+
+		const keys = []
+		for (const key in c.env.TestQueue) {
+			keys.push(key)
+		}
+
+		return c.json({ success: true, keys, v: 2 })
+	} catch (error: any) {
+		return c.json({
+			name: error.name,
+			error: error.message,
+			stack: error.stack
+		}, 500)
+	}
+})
+
+app.get('/loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa.txt', c => c.text('loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa'))
+
+app.post('/bucket', async c => {
+	await c.env.BUCKET.put(`${c.req.header('cf-ray')}-${c.req.cf?.colo ?? 'UNKNOWN'}`, JSON.stringify({
+		headers: c.req.headers,
+		cf: c.req.cf,
+		time: new Date().toISOString(),
+	}))
+
+	return c.json({ success: true })
+})
+
 export default {
-	fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
+	async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
 		return app.fetch(request, env, ctx)
+	},
+	async queue(batch: QueueBatch) {
+		console.log(JSON.stringify({
+			count: batch.messages.length,
+			messages: batch.messages
+		}))
 	}
 }
 
