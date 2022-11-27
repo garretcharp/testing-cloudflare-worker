@@ -69,12 +69,13 @@ app.get('/do/d1', async c => {
 
 app.get('/queue', async c => {
 	try {
-		await c.env.TestQueue.send({ testing: true })
-
 		const keys = []
 		for (const key in c.env.TestQueue) {
 			keys.push(key)
 		}
+
+		for (let i = 0; i < 50; i++)
+			await c.env.TestQueue.send({ testing: true, number: i })
 
 		return c.json({ success: true, keys, v: 2 })
 	} catch (error: any) {
@@ -85,18 +86,6 @@ app.get('/queue', async c => {
 		}, 500)
 	}
 })
-
-app.get('/loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa.txt', c => c.text('loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa'))
-
-// app.post('/bucket', async c => {
-// 	await c.env.BUCKET.put(`${c.req.header('cf-ray')}-${c.req.cf?.colo ?? 'UNKNOWN'}`, JSON.stringify({
-// 		headers: c.req.headers,
-// 		cf: c.req.cf,
-// 		time: new Date().toISOString(),
-// 	}))
-
-// 	return c.json({ success: true })
-// })
 
 export default {
 	async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
