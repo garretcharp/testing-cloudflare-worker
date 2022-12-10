@@ -69,15 +69,11 @@ app.get('/do/d1', async c => {
 
 app.get('/queue', async c => {
 	try {
-		const keys = []
-		for (const key in c.env.TestQueue) {
-			keys.push(key)
-		}
+		const start = Date.now()
 
-		for (let i = 0; i < 50; i++)
-			await c.env.TestQueue.send({ testing: true, number: i })
+		await c.env.TestQueue.send({ testing: true })
 
-		return c.json({ success: true, keys, v: 2 })
+		return c.json({ success: true, time: Date.now() - start })
 	} catch (error: any) {
 		return c.json({
 			name: error.name,
@@ -85,6 +81,10 @@ app.get('/queue', async c => {
 			stack: error.stack
 		}, 500)
 	}
+})
+
+app.get('/loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa.txt', async c => {
+	return c.text('loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa')
 })
 
 export default {
