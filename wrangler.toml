@@ -28,7 +28,7 @@ binding = "TestQueue"
 
 [[queues.consumers]]
 queue = "test-queue"
-max_batch_size = 10
+max_batch_size = 100
 max_batch_timeout = 30
 
 # [[ d1_databases ]]

@@ -67,6 +67,23 @@ app.get('/do/d1', async c => {
 	}
 })
 
+app.get('/do/test/:number', async c => {
+	try {
+		const number = Number(c.req.paramData?.number ?? 100)
+
+		for (let i = 0; i < number; i++) {
+			await c.env.TestDO.get(
+				c.env.TestDO.idFromName('1')
+			).fetch('https://fake-host/')
+		}
+
+		return c.json({ success: true })
+	} catch (error: any) {
+		return c.json({ message: error.message, stack: error.stack, name: error.name }, 500)
+	}
+
+})
+
 app.get('/queue', async c => {
 	try {
 		const start = Date.now()
@@ -103,6 +120,8 @@ export class TestDO implements DurableObject {
 	private app = new Hono<Bindings>()
 
 	constructor(private state: DurableObjectState, private env: Bindings) {
+		this.app.get('/', async c => c.text('Hello!'))
+
 		this.app.get('/d1-in-do', async c => {
 			try {
 				const statement = c.env.TestD1.prepare('SELECT * FROM Test')
