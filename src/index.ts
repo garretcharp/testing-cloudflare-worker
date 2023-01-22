@@ -81,7 +81,24 @@ app.get('/do/test/:number', async c => {
 	} catch (error: any) {
 		return c.json({ message: error.message, stack: error.stack, name: error.name }, 500)
 	}
+})
 
+app.get('/do/concurrency', async c => {
+	try {
+		console.log('Got request, sending to DO', new Date().toISOString())
+
+		const response = await c.env.TestDO.get(
+			c.env.TestDO.idFromName('1')
+		).fetch('https://fake-host/test/concurrency', {
+			method: 'POST'
+		})
+
+		console.log('Got response from DO', new Date().toISOString())
+
+		return response
+	} catch (error: any) {
+		return c.json({ message: error.message, stack: error.stack, name: error.name }, 500)
+	}
 })
 
 app.get('/queue', async c => {
@@ -108,7 +125,7 @@ export default {
 	async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
 		return app.fetch(request, env, ctx)
 	},
-	async queue(batch: QueueBatch) {
+	async queue(batch: MessageBatch<any>) {
 		console.log(JSON.stringify({
 			count: batch.messages.length,
 			messages: batch.messages
@@ -132,6 +149,20 @@ export class TestDO implements DurableObject {
 			} catch (error: any) {
 				return c.json({ error: error.message }, 500)
 			}
+		})
+
+		this.app.post('/test/concurrency', async c => {
+			console.log('Received request in DO', new Date().toISOString())
+
+			const value = await this.state.storage.get<number>('value') ?? 0
+
+			await scheduler.wait(3000)
+
+			await this.state.storage.put('value', value + 1)
+
+			console.log('Finished waiting in DO', new Date().toISOString())
+
+			return c.json({ value: value + 1 })
 		})
 	}
 
