@@ -19,8 +19,13 @@ routes = [
 
 [durable_objects]
 bindings = [
-	{ name = "TestDO", class_name = "TestDO" }
+	{ name = "TestDO", class_name = "TestDO" },
+	{ name = "Limits", class_name = "Limits" }
 ]
+
+[[unsafe.bindings]]
+type = "analytics_engine"
+name = "DurableObjectLimits"
 
 [[queues.producers]]
 queue = "test-queue"
@@ -52,6 +57,10 @@ new_classes = ["ChatManager", "ChatNode"]
 [[migrations]]
 tag = "v3"
 deleted_classes = ["ChatManager", "ChatNode"]
+
+[[migrations]]
+tag = "v4"
+new_classes = ["Limits"]
 
 [build]
 command = "npm run build"

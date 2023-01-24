@@ -3,8 +3,11 @@ interface Bindings {
 	AnotherD1: D1Database
 
 	TestDO: DurableObjectNamespace
+	Limits: DurableObjectNamespace
 
 	TestQueue: Queue
+
+	DurableObjectLimits: AnalyticsEngineDataset
 
 	// BUCKET: R2Bucket
 }
