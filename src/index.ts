@@ -180,7 +180,12 @@ app.get('/limits/delete', async c => {
 		c.env.Limits.idFromName('1')
 	)
 
-	return object.fetch('https://fake-host/', { method: 'DELETE' })
+	try {
+		const res = await object.fetch('https://fake-host/', { method: 'DELETE' })
+		return res
+	} catch (error: any) {
+		return c.json({ error: error.message }, 500)
+	}
 })
 
 app.get('/loaderio-dd6e18ef3fd2b8dcbd9da10052e1d1fa.txt', async c => {
