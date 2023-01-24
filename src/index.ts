@@ -271,7 +271,7 @@ export class Limits implements DurableObject {
 		this.app.post('/allowConcurrencyAndUnconfirmed', async c => {
 			try {
 				const id = crypto.randomUUID(), date = new Date().toISOString()
-				await this.state.storage.put(`Requests/${date}/${id}`, { id, date }, { allowConcurrency: true, allowUnconfirmed: true })
+				this.state.storage.put(`Requests/${date}/${id}`, { id, date }, { allowConcurrency: true, allowUnconfirmed: true })
 
 				return c.json({ id, date })
 			} catch (error: any) {
@@ -282,7 +282,7 @@ export class Limits implements DurableObject {
 		this.app.post('/allowConcurrencyUnconfirmedAndNoCache', async c => {
 			try {
 				const id = crypto.randomUUID(), date = new Date().toISOString()
-				await this.state.storage.put(`Requests/${date}/${id}`, { id, date }, { allowConcurrency: true, allowUnconfirmed: true, noCache: true })
+				this.state.storage.put(`Requests/${date}/${id}`, { id, date }, { allowConcurrency: true, allowUnconfirmed: true, noCache: true })
 
 				return c.json({ id, date })
 			} catch (error: any) {
