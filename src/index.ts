@@ -125,27 +125,12 @@ app.get('/limits', async c => {
 	c.env.DurableObjectLimits.writeDataPoint({ indexes: ['Requests'] })
 
 	try {
-		const query = c.req.query(), requestStart = Date.now()
+		const requestStart = Date.now()
 
-		let res: Response
+		const res = await object.fetch('https://fake-host/', {
+			method: 'POST'
+		})
 
-		if (query.noCache) {
-			res = await object.fetch('https://fake-host/allowConcurrencyUnconfirmedAndNoCache', {
-				method: 'POST'
-			})
-		} else if (query.unconfirmed) {
-			res = await object.fetch('https://fake-host/allowConcurrencyAndUnconfirmed', {
-				method: 'POST'
-			})
-		} else if (query.concurrency) {
-			res = await object.fetch('https://fake-host/allowConcurrency', {
-				method: 'POST'
-			})
-		} else {
-			res = await object.fetch('https://fake-host/', {
-				method: 'POST'
-			})
-		}
 		const requestEnd = Date.now()
 
 		if (res.status === 200)
@@ -248,43 +233,10 @@ export class Limits implements DurableObject {
 	constructor(private state: DurableObjectState, private env: Bindings) {
 		this.app.post('/', async c => {
 			try {
-				const id = crypto.randomUUID(), date = new Date().toISOString()
-				await this.state.storage.put(`Requests/${date}/${id}`, { id, date })
+				const requests = await this.state.storage.get<number>(`Requests`) ?? 0
+				await this.state.storage.put(`Requests`, requests + 1)
 
-				return c.json({ id, date })
-			} catch (error: any) {
-				return c.json({ error: error.message }, 500)
-			}
-		})
-
-		this.app.post('/allowConcurrency', async c => {
-			try {
-				const id = crypto.randomUUID(), date = new Date().toISOString()
-				await this.state.storage.put(`Requests/${date}/${id}`, { id, date }, { allowConcurrency: true })
-
-				return c.json({ id, date })
-			} catch (error: any) {
-				return c.json({ error: error.message }, 500)
-			}
-		})
-
-		this.app.post('/allowConcurrencyAndUnconfirmed', async c => {
-			try {
-				const id = crypto.randomUUID(), date = new Date().toISOString()
-				this.state.storage.put(`Requests/${date}/${id}`, { id, date }, { allowConcurrency: true, allowUnconfirmed: true })
-
-				return c.json({ id, date })
-			} catch (error: any) {
-				return c.json({ error: error.message }, 500)
-			}
-		})
-
-		this.app.post('/allowConcurrencyUnconfirmedAndNoCache', async c => {
-			try {
-				const id = crypto.randomUUID(), date = new Date().toISOString()
-				this.state.storage.put(`Requests/${date}/${id}`, { id, date }, { allowConcurrency: true, allowUnconfirmed: true, noCache: true })
-
-				return c.json({ id, date })
+				return c.json({ requests: requests + 1 })
 			} catch (error: any) {
 				return c.json({ error: error.message }, 500)
 			}
