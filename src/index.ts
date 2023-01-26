@@ -122,7 +122,10 @@ app.get('/limits', async c => {
 		c.env.Limits.idFromName('1')
 	)
 
-	c.env.DurableObjectLimits.writeDataPoint({ indexes: ['Requests'] })
+	c.env.DurableObjectLimits.writeDataPoint({
+		blobs: ['All'],
+		indexes: ['Requests']
+	})
 
 	try {
 		const requestStart = Date.now()
@@ -135,12 +138,13 @@ app.get('/limits', async c => {
 
 		if (res.status === 200)
 			c.env.DurableObjectLimits.writeDataPoint({
+				blobs: ['All'],
 				doubles: [requestEnd - requestStart],
 				indexes: ['SuccessResults']
 			})
 		else
 			c.env.DurableObjectLimits.writeDataPoint({
-				blobs: [`Status ${res.status}`, await res.clone().text()],
+				blobs: ['All', `Status ${res.status}`, await res.clone().text()],
 				doubles: [requestEnd - requestStart],
 				indexes: ['ErrorResults']
 			})
@@ -148,7 +152,54 @@ app.get('/limits', async c => {
 		return res
 	} catch (error: any) {
 		c.env.DurableObjectLimits.writeDataPoint({
-			blobs: [error.name, error.message],
+			blobs: ['All', error.name, error.message],
+			indexes: ['ErrorResults']
+		})
+
+		return c.json({
+			name: error.name,
+			error: error.message,
+			stack: error.stack
+		}, 500)
+	}
+})
+
+app.get('/limits/hourly', async c => {
+	const object = c.env.Limits.get(
+		c.env.Limits.idFromName('2')
+	)
+
+	c.env.DurableObjectLimits.writeDataPoint({
+		blobs: ['Hourly'],
+		indexes: ['Requests']
+	})
+
+	try {
+		const requestStart = Date.now()
+
+		const res = await object.fetch('https://fake-host/hourly', {
+			method: 'POST'
+		})
+
+		const requestEnd = Date.now()
+
+		if (res.status === 200)
+			c.env.DurableObjectLimits.writeDataPoint({
+				blobs: ['Hourly'],
+				doubles: [requestEnd - requestStart],
+				indexes: ['SuccessResults']
+			})
+		else
+			c.env.DurableObjectLimits.writeDataPoint({
+				blobs: ['Hourly', `Status ${res.status}`, await res.clone().text()],
+				doubles: [requestEnd - requestStart],
+				indexes: ['ErrorResults']
+			})
+
+		return res
+	} catch (error: any) {
+		c.env.DurableObjectLimits.writeDataPoint({
+			blobs: ['Hourly', error.name, error.message],
 			indexes: ['ErrorResults']
 		})
 
@@ -163,6 +214,19 @@ app.get('/limits', async c => {
 app.get('/limits/delete', async c => {
 	const object = c.env.Limits.get(
 		c.env.Limits.idFromName('1')
+	)
+
+	try {
+		const res = await object.fetch('https://fake-host/', { method: 'DELETE' })
+		return res
+	} catch (error: any) {
+		return c.json({ error: error.message }, 500)
+	}
+})
+
+app.get('/limits/delete/hourly', async c => {
+	const object = c.env.Limits.get(
+		c.env.Limits.idFromName('2')
 	)
 
 	try {
@@ -237,6 +301,19 @@ export class Limits implements DurableObject {
 				await this.state.storage.put(`Requests`, requests + 1)
 
 				return c.json({ requests: requests + 1 })
+			} catch (error: any) {
+				return c.json({ error: error.message }, 500)
+			}
+		})
+
+		this.app.post('/hourly', async c => {
+			try {
+				const date = new Date(), key = `Requests/${date.toISOString().split('T')[0]}`, hour = date.getUTCHours()
+				const requests = await this.state.storage.get<number[]>(key) ?? [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+				requests[hour] = requests[hour] + 1
+				await this.state.storage.put(key, requests)
+
+				return c.json({ requests })
 			} catch (error: any) {
 				return c.json({ error: error.message }, 500)
 			}

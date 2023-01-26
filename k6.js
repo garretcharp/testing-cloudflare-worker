@@ -4,10 +4,10 @@ export const options = {
 	scenarios: {
 		open_model: {
 			executor: 'constant-arrival-rate',
-			rate: 500,
+			rate: 1000,
 			timeUnit: '1s',
-			duration: '8m',
-			preAllocatedVUs: 10000
+			duration: '5m',
+			preAllocatedVUs: 3000
 		},
 	},
 	userAgent: 'Testing Garret / 1.0.0',
@@ -15,6 +15,6 @@ export const options = {
 }
 
 export default function () {
-	http.get('https://testing.garretcharp.com/limits')
+	http.get('https://testing.garretcharp.com/limits/hourly')
 	// http.get('https://testing.garretcharp.com/limits?concurrency')
 }
